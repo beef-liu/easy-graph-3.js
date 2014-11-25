@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Test JsUtil</title>
+
+        <script src='../lib/jquery-1.9.1.min.js'></script>
+        <script src='../src/EasyGraph3.js'></script>
+        <script src='../src/JsUtils.js'></script>
+
+        <script>
+            testArrayForEach("1", "2", "3");
+
+            testMap();
+
+            function testArrayForEach() {
+                console.log("arguments:" + arguments.length + " [0]:" + arguments[0]);
+                
+                console.log("testArrayForEach() ---------------------");
+
+                var a = ["a", "b", "c", "d"];
+
+                a.forEach(function(v) {
+                    console.log("v:" + v);
+                });
+            }
+
+            function testMap() {
+                console.log("testMap() ---------------------");
+
+                var map = new EG3.Map();
+
+                map.set("a", 4);
+                map.set("b", 3);
+                map.set("c", 2);
+                map.set("d", 1);
+                map.log("inited");
+
+                map.sortByKey();
+                map.log("after sortByKey()");
+
+                map.sortByKey(false);
+                map.log("after sortByKey(false)");
+
+                map.sortByValue();
+                map.log("after sortByValue()");
+
+                map.sortByValue(false);
+                map.log("after sortByValue(false)");
+
+                map.sort(function(v1, v2) {
+                    if (v1.key == v2.key) {
+                        return 0;
+                    } else if (v1.key < v2.key) {
+                        return -1;
+                    } else {
+                        return 0;
+                    }
+                });
+                map.log("after sort()");
+
+                map.del("b");
+                map.log("after del()");
+
+                map.clear();
+                console.log("after clear() map.size():" + map.size());
+                map.log("after clear()");
+            }
+        </script>
+
+    </head>
+
+    <body>
+        <div></div>
+    </body>
+</html>
