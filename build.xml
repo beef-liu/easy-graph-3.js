@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="js-build" default="clean" basedir="./">
+    <property name="jsall"   value="easy-graph-3.js"/>
+    <property name="jsmin"   value="easy-graph-3.min.js"/>
+    <property name="src.dir"   value="src"/>
+    <property name="build.dir"   value="build"/>
+    <property name="charset"  value="utf-8"/>
+
+    <target name="init">
+        <!--
+        <mkdir dir="${build.dir}"/>
+        -->
+    </target>
+    
+    <target name="concat" depends="init">
+        <concat destfile="${build.dir}/${jsall}" encoding="${charset}" outputencoding="${charset}">
+            <path path="${src.dir}/EasyGraph3.js" />
+            <path path="${src.dir}/JsUtils.js" />
+            <path path="${src.dir}/NetworkGraph.js" />
+        </concat>
+
+        <!-- http://ant.apache.org/manual/Tasks/replaceregexp.html -->         
+        <replaceregexp match="DEBUG" replace="" flags="g" byline="true" file="${build.dir}/${jsall}" encoding="${charset}" />
+    </target>
+
+    <target name="compress" depends="concat">
+        <echo message="start compress" />
+        <java jar="./yuicompressor-2.4.8.jar" fork="true" failonerror="false">
+            <arg line="--type js --charset ${charset} --nomunge ${build.dir}/${jsall} -o ${build.dir}/${jsmin}" />
+        </java>
+        <echo message="end compress" />
+    </target>
+
+    <target name="clean" depends="compress">
+        <!-- 
+        <delete dir="${tmp.dir}"/>
+        -->
+    </target>
+     
+</project>

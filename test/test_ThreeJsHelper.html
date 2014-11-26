@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Test ThreeJsHelper</title>
+
+        <script src='../lib/jquery-1.9.1.min.js'></script>
+        
+        <script src='../lib/three.min.js'></script>
+        <script src='../lib/Detector.js'></script>
+        <script src='../lib/stats.min.js'></script>
+        <script src='../lib/OrbitControls.js'></script>
+        <script src='../lib/THREEx.KeyboardState.js'></script>
+        <script src='../lib/THREEx.FullScreen.js'></script>
+        <script src='../lib/THREEx.WindowResize.js'></script>
+        
+        <script src='ThreeJsHelper.js'></script>
+
+        <script>
+            var threeJsHelper;
+
+            $(document).ready(function() {
+                threeJsHelper = new ThreeJsHelper({
+                    container: $('#glscene')[0],
+                });
+                
+                redraw();
+                
+                //test buttons
+                $('#btnAddBall').click(function() {
+                    addBall();
+                });
+            });
+            
+            function redraw() {
+                requestAnimationFrame(redraw);
+                threeJsHelper.redraw();
+            }
+            
+            var _ballCnt = -1;
+            function addBall() {
+                _ballCnt ++;
+
+                var splitCnt = 12;
+                var splitCntHalf = splitCnt / 2;
+                var radianUnit = Math.PI * 2 / splitCnt;
+                var roundCnt = splitCnt * (splitCnt - 2);
+                var alpha, beta;
+                
+                alpha = Math.floor(_ballCnt / 12);
+                beta = _ballCnt - alpha * 12;
+                if((beta % splitCntHalf) == 0) {
+                    addBall();
+                    return;
+                }
+
+                var r = 500 * (Math.floor(_ballCnt / roundCnt) + 1);
+                
+                var x, y, z;
+                x = r * Math.cos(radianUnit * beta) * Math.cos(radianUnit * alpha);
+                y = r * Math.sin(radianUnit * alpha);
+                z = r * Math.cos(radianUnit * beta) * Math.sin(radianUnit * alpha);
+                
+                var center = new THREE.Vector3(x, y, z);
+                
+                var geom = new THREE.SphereGeometry(100);
+                
+                var mat = new THREE.MeshBasicMaterial();
+                mat.color = (0xff * Math.cos(_ballCnt) << 16) | (0xff * Math.cos(alpha) << 8) | (0xff * Math.cos(beta));
+                
+                var ball = new THREE.Mesh(geom, mat);
+                ball.position = center;
+                threeJsHelper.scene.add(ball);
+            }
+            
+        </script>
+
+    </head>
+
+    <body>
+        <div style="position: absolute; top: 0px; left: 0px; width: 100%; height: 28px; background-color: #e1e1e1; padding: 2px; margin: 0px; font-size: larger;">
+            <input type="button" id="btnAddBall" value="add a ball" style=" font-size: larger;"/>
+        </div>
+        <div id="glscene" style="position: absolute; left:0px; top:30px"></div>
+    </body>
+</html>

@@ -1,15 +1,26 @@
 /**
  * 
- * @param {container:Dom Node, bgColor:int, width:int, height:int, renderer:THREE.WebGLRenderer | THREE.CanvasRenderer, camera:THREE.Camera, light:THREE.Light} args
+ * @param {container:Dom Node, bgColor:int, width:int, height:int, renderer:THREE.WebGLRenderer | THREE.CanvasRenderer, camera:THREE.Camera, light:THREE.Light, enableStats:} args
  * container:   dom node which contains canvas
  * bgColor:     (default 0xffffff) background color
  * width:       (default window.innerWidth) width of canvas
  * height:      (default window.innerHeight) height of canvas
  * renderer:    (default THREE.WebGLRenderer or THREE.CanvasRenderer).
  * camera:
- * light: 
+ * light:
+ * enableStats: (default true) 
  */
-EG3.ThreeJsHelper = function(args) {
+
+// _ThreeJsHelper_idSeq = 1;
+
+ThreeJsHelper = function(args) {
+    // this.newId = function() {
+        // return "ThreeJsHelper_" + (_ThreeJsHelper_idSeq++);  
+    // };
+// 
+    // this.id = this.newId();
+    // window[this.id] = this;
+    
     this.container = args.container;
     
     if(args.bgColor == undefined) {
@@ -70,13 +81,121 @@ EG3.ThreeJsHelper = function(args) {
     }
     this.scene.add(this.light);
     
-    
-    var keyboard = new THREEx.KeyboardState();
-    var clock = new THREE.Clock();
-    var controls, stats;
-
-    function init() {
-        //init controls and events
-        initControlAndEvents();
+    if(args.enableStats == undefined) {
+        this.enableStats = true; 
+    } else {
+        this.enableStats = args.enableStats; 
     }
+    
+    this.keyboard = new THREEx.KeyboardState();
+    this.clock = new THREE.Clock();
+    this.controls = null; 
+    this.stats = null;
+    
+    this.axesObj = {
+        axes: null,
+        gridXZ: null,
+        gridXY: null,
+        gridYZ: null,
+    };
+
+    //init axes ----------------
+    {
+        //axes -----------
+        var step = 2000;
+        var size = step * 5;
+        
+        var gridOrigin = new THREE.Vector3(-size, -size, -size);
+
+        this.axesObj.axes = new THREE.AxisHelper(size);
+        this.axesObj.axes.position.set(0, 0, 0);
+        this.scene.add(this.axesObj.axes);
+        
+        this.axesObj.gridXZ = new THREE.GridHelper(size, step);
+        this.axesObj.gridXZ.setColors(new THREE.Color(0x006600), new THREE.Color(0x006600));
+        this.axesObj.gridXZ.position.set(gridOrigin.x + size, gridOrigin.y, gridOrigin.z + size);
+        this.scene.add(this.axesObj.gridXZ);
+        
+        this.axesObj.gridXY = new THREE.GridHelper(size, step);
+        this.axesObj.gridXY.position.set(gridOrigin.x + size, gridOrigin.y + size, gridOrigin.z);
+        this.axesObj.gridXY.rotation.x = Math.PI/2;
+        this.axesObj.gridXY.setColors(new THREE.Color(0x000066), new THREE.Color(0x000066));
+        this.scene.add(this.axesObj.gridXY);
+    
+        this.axesObj.gridYZ = new THREE.GridHelper(size, step);
+        this.axesObj.gridYZ.position.set(gridOrigin.x, gridOrigin.y + size, gridOrigin.z + size);
+        this.axesObj.gridYZ.rotation.z = Math.PI/2;
+        this.axesObj.gridYZ.setColors(new THREE.Color(0x660000), new THREE.Color(0x660000));
+        this.scene.add(this.axesObj.gridYZ);
+    }
+    
+    //init controls and events ------------------------------
+    {
+        // EVENTS
+        THREEx.WindowResize(this.renderer, this.camera);
+        THREEx.FullScreen.bindKey({charCode : 'm'.charCodeAt(0) });
+        
+        // CONTROLS
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        
+        // STATS
+        if(this.enableStats) {
+            this.stats = new Stats();
+            this.stats.domElement.style.position = 'absolute';
+            this.stats.domElement.style.bottom = '0px';
+            this.stats.domElement.style.zIndex = 1000000;
+            this.container.appendChild(this.stats.domElement);
+        }
+    }
+    
+};
+
+
+ThreeJsHelper.prototype = {
+    redraw: function() {
+        this.renderer.render(this.scene, this.camera);
+        
+        //controls
+        if(this.controls) {
+            if (this.keyboard.pressed("z") ) {
+                // do something   
+            }
+            this.controls.update();
+        }
+        
+        //stats
+        if(this.stats) {
+            this.stats.update();
+        }
+    },
+    
+    showStats: function(isToShow) {
+        var showFlg;
+        if(isToShow == undefined) {
+            showFlg = true;
+        } else {
+            showFlg = isToShow;
+        }
+        
+        if(showFlg) {
+            threeJsHelper.stats.domElement.style.display = "block";
+        } else {
+            threeJsHelper.stats.domElement.style.display = "none";
+        }
+    },
+    
+    showAxes: function(isToShow) {
+        var showFlg;
+        if(isToShow == undefined) {
+            showFlg = true;
+        } else {
+            showFlg = isToShow;
+        }
+        
+        this.axesObj.axes.visible = showFlg;
+        this.axesObj.gridXZ.visible = showFlg;
+        this.axesObj.gridXY.visible = showFlg;
+        this.axesObj.gridYZ.visible = showFlg;
+    },
+    
 };

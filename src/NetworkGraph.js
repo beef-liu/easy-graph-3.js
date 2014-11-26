@@ -98,7 +98,7 @@ EG3.NetworkGraph = function(scene) {
         var position = this.center;
 
                 
-        makeGraphGeom(position, );
+        //makeGraphGeom(position, );
     };
     
     
