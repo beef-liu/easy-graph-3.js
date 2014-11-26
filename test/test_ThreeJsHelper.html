@@ -30,6 +30,13 @@
                 $('#btnAddBall').click(function() {
                     addBall();
                 });
+                
+                $('#btnAddBall1000').click(function() {
+                    for(var i = 0; i < 1000; i++) {
+                        addBall();
+                    }
+                });
+                
             });
             
             function redraw() {
@@ -38,38 +45,37 @@
             }
             
             var _ballCnt = -1;
+            var _loopCnt = 0;
             function addBall() {
                 _ballCnt ++;
 
-                var splitCnt = 12;
+                var splitCnt = 12 * Math.pow(_loopCnt + 1, 0.4);
                 var splitCntHalf = splitCnt / 2;
                 var radianUnit = Math.PI * 2 / splitCnt;
-                var roundCnt = splitCnt * (splitCnt - 2);
+                var roundCnt = splitCnt * splitCnt;
+
                 var alpha, beta;
+                alpha = Math.floor(_ballCnt / splitCnt);
+                beta = _ballCnt - alpha * splitCnt;
                 
-                alpha = Math.floor(_ballCnt / 12);
-                beta = _ballCnt - alpha * 12;
-                if((beta % splitCntHalf) == 0) {
-                    addBall();
-                    return;
+                if((_ballCnt % roundCnt) == 0) {
+                    _loopCnt++;
                 }
 
-                var r = 500 * (Math.floor(_ballCnt / roundCnt) + 1);
+                var r = 500 * Math.pow((Math.floor(_ballCnt / roundCnt) + 1), 0.7);
                 
                 var x, y, z;
                 x = r * Math.cos(radianUnit * beta) * Math.cos(radianUnit * alpha);
-                y = r * Math.sin(radianUnit * alpha);
+                y = r * Math.sin(radianUnit * beta);
                 z = r * Math.cos(radianUnit * beta) * Math.sin(radianUnit * alpha);
+                                
+                var geom = new THREE.SphereGeometry(50);
                 
-                var center = new THREE.Vector3(x, y, z);
-                
-                var geom = new THREE.SphereGeometry(100);
-                
-                var mat = new THREE.MeshBasicMaterial();
-                mat.color = (0xff * Math.cos(_ballCnt) << 16) | (0xff * Math.cos(alpha) << 8) | (0xff * Math.cos(beta));
+                var color = (0xff * Math.cos(radianUnit *_ballCnt) << 16) | (0xff * Math.cos(radianUnit *alpha) << 8) | (0xff * Math.cos(radianUnit * beta));
+                var mat = new THREE.MeshBasicMaterial({color: color});
                 
                 var ball = new THREE.Mesh(geom, mat);
-                ball.position = center;
+                ball.position.set(x, y, z);
                 threeJsHelper.scene.add(ball);
             }
             
@@ -80,6 +86,7 @@
     <body>
         <div style="position: absolute; top: 0px; left: 0px; width: 100%; height: 28px; background-color: #e1e1e1; padding: 2px; margin: 0px; font-size: larger;">
             <input type="button" id="btnAddBall" value="add a ball" style=" font-size: larger;"/>
+            <input type="button" id="btnAddBall1000" value="add 1000 balls" style=" font-size: larger;"/>
         </div>
         <div id="glscene" style="position: absolute; left:0px; top:30px"></div>
     </body>
