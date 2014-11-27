@@ -169,33 +169,27 @@ ThreeJsHelper.prototype = {
         }
     },
     
-    showStats: function(isToShow) {
-        var showFlg;
+    visibleStats: function(isToShow) {
         if(isToShow == undefined) {
-            showFlg = true;
+            return (this.stats.domElement.style.display != "none");
         } else {
-            showFlg = isToShow;
-        }
-        
-        if(showFlg) {
-            threeJsHelper.stats.domElement.style.display = "block";
-        } else {
-            threeJsHelper.stats.domElement.style.display = "none";
+            if(isToShow) {
+                this.stats.domElement.style.display = "block";
+            } else {
+                this.stats.domElement.style.display = "none";
+            }
         }
     },
     
-    showAxes: function(isToShow) {
-        var showFlg;
+    visibleAxes: function(isToShow) {
         if(isToShow == undefined) {
-            showFlg = true;
+            return this.axesObj.axes.visible;
         } else {
-            showFlg = isToShow;
+            this.axesObj.axes.visible = isToShow;
+            this.axesObj.gridXZ.visible = isToShow;
+            this.axesObj.gridXY.visible = isToShow;
+            this.axesObj.gridYZ.visible = isToShow;
         }
-        
-        this.axesObj.axes.visible = showFlg;
-        this.axesObj.gridXZ.visible = showFlg;
-        this.axesObj.gridXY.visible = showFlg;
-        this.axesObj.gridYZ.visible = showFlg;
     },
     
 };

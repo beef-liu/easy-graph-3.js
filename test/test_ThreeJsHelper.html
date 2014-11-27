@@ -17,77 +17,300 @@
         <script src='ThreeJsHelper.js'></script>
 
         <script>
-            var threeJsHelper;
-
+            var _threeJsHelper;
+            var FPS = 30;
+            var MAX_ANIMATE_INTERVAL = 1000 / 60;
+            //var ANIMATE_INTERVAL_DELAY = Math.max(Math.ceil(1000 / FPS - MAX_ANIMATE_INTERVAL), 0);
+            var ANIMATE_INTERVAL_DELAY = Math.ceil(1000 / FPS) - 5;
+            
+            function animate() {
+                var timeout = setTimeout(
+                    function() {
+                        requestAnimationFrame(animate);
+                        _threeJsHelper.redraw();
+                        
+                        clearTimeout(timeout);
+                    }, ANIMATE_INTERVAL_DELAY);
+            }
+            
             $(document).ready(function() {
-                threeJsHelper = new ThreeJsHelper({
+                _threeJsHelper = new ThreeJsHelper({
                     container: $('#glscene')[0],
                 });
                 
-                redraw();
+                animate();
                 
                 //test buttons
-                $('#btnAddBall').click(function() {
-                    addBall();
+                $('#btnVisibleAxes').click(function() {
+                    _threeJsHelper.visibleAxes(!_threeJsHelper.visibleAxes());
                 });
                 
+                $('#btnVisibleStats').click(function() {
+                    _threeJsHelper.visibleStats(!_threeJsHelper.visibleStats());
+                });
+                
+                $('#btnAddBall').click(function() {
+                    _ballDistr1.addBall();
+                });
                 $('#btnAddBall1000').click(function() {
                     for(var i = 0; i < 1000; i++) {
-                        addBall();
+                        _ballDistr1.addBall();
                     }
                 });
                 
+                $('#btnAddBall_2').click(function() {
+                    _ballDistr2.addBall();
+                });
+                $('#btnAddBall1000_2').click(function() {
+                    for(var i = 0; i < 1000; i++) {
+                        _ballDistr2.addBall();
+                    }
+                });
+                
+                $('#btnAddBall_3').click(function() {
+                    _ballDistr3.addBall();
+                });
+                $('#btnAddBall1000_3').click(function() {
+                    for(var i = 0; i < 1000; i++) {
+                        _ballDistr3.addBall();
+                    }
+                });
             });
             
-            function redraw() {
-                requestAnimationFrame(redraw);
-                threeJsHelper.redraw();
-            }
-            
-            var _ballCnt = -1;
-            var _loopCnt = 0;
-            function addBall() {
-                _ballCnt ++;
-
-                var splitCnt = 12 * Math.pow(_loopCnt + 1, 0.4);
-                var splitCntHalf = splitCnt / 2;
-                var radianUnit = Math.PI * 2 / splitCnt;
-                var roundCnt = splitCnt * splitCnt;
-
-                var alpha, beta;
-                alpha = Math.floor(_ballCnt / splitCnt);
-                beta = _ballCnt - alpha * splitCnt;
+            BallDistribution1 = function() {
+                var _ballCnt = -1;
+                var _loopCnt = 0;
                 
-                if((_ballCnt % roundCnt) == 0) {
-                    _loopCnt++;
+                this.addBall = function() {
+                    _ballCnt ++;
+    
+                    var splitCnt = 12 * Math.ceil(Math.pow(_loopCnt + 1, 0.4));
+                    var splitCntHalf = splitCnt / 2;
+                    var radianUnit = Math.PI * 2 / splitCnt;
+                    var roundCnt = splitCnt * splitCnt;
+    
+                    var alpha, beta;
+                    alpha = Math.floor(_ballCnt / splitCnt);
+                    beta = _ballCnt - alpha * splitCnt;
+                    
+                    if((_ballCnt % roundCnt) == 0) {
+                        _loopCnt++;
+                    }
+    
+                    //var r = 500 * Math.pow((Math.floor(_ballCnt / roundCnt) + 1), 0.7);
+                    var r = 500 * _loopCnt;
+                    
+                    var x, y, z;
+                    x = r * Math.cos(radianUnit * beta) * Math.cos(radianUnit * alpha);
+                    y = r * Math.sin(radianUnit * beta);
+                    z = r * Math.cos(radianUnit * beta) * Math.sin(radianUnit * alpha);
+                                    
+                    var geom = new THREE.SphereGeometry(50);
+                    
+                    var color = (0xff * Math.cos(radianUnit *_ballCnt) << 16) | (0xff * Math.cos(radianUnit *alpha) << 8) | (0xff * Math.cos(radianUnit * beta));
+                    var mat = new THREE.MeshBasicMaterial({color: color});
+                    
+                    var ball = new THREE.Mesh(geom, mat);
+                    ball.position.set(x, y, z);
+                    _threeJsHelper.scene.add(ball);
+                };
+            };
+            
+            BallDistribution2 = function() {
+                var _ballCnt = -1;
+                var _lastPosition = null;
+
+                this.addBall = function() {
+                    _ballCnt ++;
+
+                    var x, y, z;
+                    var dir;
+                    
+                    if(!_lastPosition) {
+                        x = 0;
+                        y = 0;
+                        z = 0;
+                        
+                        _lastPosition = new THREE.Vector3(x, y, z);
+                    } else {
+                        //random walk
+                        x = _lastPosition.x;
+                        y = _lastPosition.y;
+                        z = _lastPosition.z;
+                        
+                        // dir = Math.min(Math.floor(Math.random() * 3), 2);
+                        // if(dir == 0) {
+                        // } else if(dir == 1) {
+                        // } else {
+                        // }
+                        
+                        x += randomStep();
+                        y += randomStep();
+                        z += randomStep();
+                        
+                        _lastPosition.set(x, y, z);
+                    }
+                    
+                    var color = nextColor();
+                    
+                    var mat = new THREE.MeshBasicMaterial({color: color});
+                    var geom = new THREE.SphereGeometry(50);
+                    var ball = new THREE.Mesh(geom, mat);
+                    ball.position.set(_lastPosition.x, _lastPosition.y, _lastPosition.z);
+                    _threeJsHelper.scene.add(ball);
+                };
+                
+                function nextColor() {
+                    var alpha, beta;
+                    var splitCnt = 12;
+                    var radianUnit = Math.PI * 2 / splitCnt;
+                    alpha = Math.floor(_ballCnt / splitCnt);
+                    beta = _ballCnt - alpha * splitCnt;
+                    
+                    var color = (0xff * Math.cos(radianUnit * _ballCnt) << 16) | (0xff * Math.cos(radianUnit * alpha) << 8) | (0xff * Math.cos(radianUnit * beta));
+                    return color;
                 }
+                
+                function randomStep() {
+                    var stepUnit = 500;
+                    var step = stepUnit * (Math.random() - 0.5);
+                    var factorSign = 1;
+                    if(step < 0) {
+                        factorSign = -1;
+                    }
+                    
+                    step += stepUnit * factorSign * 0.5;
+                    
+                    return step;
+                }
+                
+            };
 
-                var r = 500 * Math.pow((Math.floor(_ballCnt / roundCnt) + 1), 0.7);
+            BallDistribution3 = function() {
+                var _ballCnt = -1;
+
+                var _cellWidth = 200;
+                var _preCalculatedCells = [];
                 
-                var x, y, z;
-                x = r * Math.cos(radianUnit * beta) * Math.cos(radianUnit * alpha);
-                y = r * Math.sin(radianUnit * beta);
-                z = r * Math.cos(radianUnit * beta) * Math.sin(radianUnit * alpha);
-                                
-                var geom = new THREE.SphereGeometry(50);
+                preCalculatCells(100000);
                 
-                var color = (0xff * Math.cos(radianUnit *_ballCnt) << 16) | (0xff * Math.cos(radianUnit *alpha) << 8) | (0xff * Math.cos(radianUnit * beta));
-                var mat = new THREE.MeshBasicMaterial({color: color});
+                this.addBall = function() {
+                    _ballCnt++;
+                    
+                    var ballR = 50;
+                    
+                    var x, y, z;
+                    var cellPos = _preCalculatedCells[_ballCnt];
+                    
+                    var diverseStep = 100;
+                     
+                    x = cellPos.x + diverseStep * (Math.random() - 0.5);  
+                    y = cellPos.y + diverseStep * (Math.random() - 0.5);
+                    z = cellPos.z + diverseStep * (Math.random() - 0.5);  
+
+                    var color = nextColor();
+                    
+                    var mat = new THREE.MeshBasicMaterial({color: color});
+                    var geom = new THREE.SphereGeometry(ballR);
+                    var ball = new THREE.Mesh(geom, mat);
+                    
+                    ball.position.set(x, y, z);
+                    _threeJsHelper.scene.add(ball);
+                };
                 
-                var ball = new THREE.Mesh(geom, mat);
-                ball.position.set(x, y, z);
-                threeJsHelper.scene.add(ball);
-            }
-            
+                function nextColor() {
+                    var alpha, beta;
+                    var splitCnt = 12;
+                    var radianUnit = Math.PI * 2 / splitCnt;
+                    alpha = Math.floor(_ballCnt / splitCnt);
+                    beta = _ballCnt - alpha * splitCnt;
+                    
+                    var color = (0xff * Math.cos(radianUnit * _ballCnt) << 16) | (0xff * Math.cos(radianUnit * alpha) << 8) | (0xff * Math.cos(radianUnit * beta));
+                    return color;
+                }
+                
+                function preCalculatCells(count) {
+                    var center = new THREE.Vector3(0, 0, 0);
+                    _preCalculatedCells = [center];
+                    
+                    var d = 0;
+                    var i;
+                    var step = _cellWidth;
+                    var x, y, z;
+                    var arrayTmp = [];
+                    var index;
+                
+                    x = center.x;
+                    y = center.y;
+                    z = center.z;
+                    while(_preCalculatedCells.length <= count) {
+                        d += 2;
+                        
+                        arrayTmp.splice(0, arrayTmp.length);
+                
+                        //1st point 
+                        x += step;
+                        y -= step;
+                        arrayTmp.push(new THREE.Vector3(x, y, z));
+                        
+                        //up
+                        for(i = 1; i <= d; i++) {
+                            y += step;
+                            arrayTmp.push(new THREE.Vector3(x, y, z));
+                        }
+                
+                        //left
+                        for(i = 1; i <= d; i++) {
+                            x -= step;
+                            arrayTmp.push(new THREE.Vector3(x, y, z));
+                        }
+                
+                        //down
+                        for(i = 1; i <= d; i++) {
+                            y -= step;
+                            arrayTmp.push(new THREE.Vector3(x, y, z));
+                        }
+                        
+                        //right
+                        for(i = 1; i <= d; i++) {
+                            x += step;
+                            if(i != d) {
+                                arrayTmp.push(new THREE.Vector3(x, y, z));
+                            }
+                        }
+                        
+                        //add into array in random order
+                        while(arrayTmp.length > 0) {
+                            index = Math.min(Math.ceil(Math.random() * arrayTmp.length), arrayTmp.length - 1);
+                            _preCalculatedCells.push(arrayTmp.splice(index, 1)[0]);
+                        }
+                    }
+                }
+                
+            };
+
+            var _ballDistr1 = new BallDistribution1();
+            var _ballDistr2 = new BallDistribution2();
+            var _ballDistr3 = new BallDistribution3();
+       
         </script>
 
     </head>
 
     <body>
-        <div style="position: absolute; top: 0px; left: 0px; width: 100%; height: 28px; background-color: #e1e1e1; padding: 2px; margin: 0px; font-size: larger;">
-            <input type="button" id="btnAddBall" value="add a ball" style=" font-size: larger;"/>
-            <input type="button" id="btnAddBall1000" value="add 1000 balls" style=" font-size: larger;"/>
+        <div style="position: absolute; top: 0px; left: 0px; width: 100%; height: 28px; background-color: #e1e1e1; padding: 2px 6px 2px 6px; margin: 0px; font-size: larger;">
+            <input type="button" id="btnVisibleAxes" value="axes (on/off)" style=" font-size: medium; background-color: #fff;"/>
+            <input type="button" id="btnVisibleStats" value="stats (on/off)" style=" font-size: medium; background-color: #fff;"/>
+            
+            <input type="button" id="btnAddBall" value="add 1 ball" style=" font-size: medium; background-color: #ffff00;"/>
+            <input type="button" id="btnAddBall1000" value="add 1000 balls" style=" font-size: medium; background-color: #ffff00;"/>
+
+            <input type="button" id="btnAddBall_2" value="add 1 ball" style=" font-size: medium; background-color: #00ff00;"/>
+            <input type="button" id="btnAddBall1000_2" value="add 1000 balls" style=" font-size: medium; background-color: #00ff00;"/>
+
+            <input type="button" id="btnAddBall_3" value="add 1 ball" style=" font-size: medium; background-color: #ffa000;"/>
+            <input type="button" id="btnAddBall1000_3" value="add 1000 balls" style=" font-size: medium; background-color: #ffa000;"/>
         </div>
-        <div id="glscene" style="position: absolute; left:0px; top:30px"></div>
+        <div id="glscene" style="position: absolute; left:0px; top:30px; bottom: 0px;"></div>
     </body>
 </html>

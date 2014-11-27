@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Test ThreeJsHelper</title>
+
+        <script src='../lib/jquery-1.9.1.min.js'></script>
+        
+        <script src='../lib/three.min.js'></script>
+        <script src='../lib/Detector.js'></script>
+        <script src='../lib/stats.min.js'></script>
+        <script src='../lib/OrbitControls.js'></script>
+        <script src='../lib/THREEx.KeyboardState.js'></script>
+        <script src='../lib/THREEx.FullScreen.js'></script>
+        <script src='../lib/THREEx.WindowResize.js'></script>
+        
+        <script src='../src/EasyGraph3.js'></script>
+        <script src='../src/JsUtils.js'></script>
+        <script src='../src/NetworkGraph.js'></script>
+        
+        <script src='ThreeJsHelper.js'></script>
+
+        <script>
+            var _threeJsHelper;
+            var FPS = 30;
+            var MAX_ANIMATE_INTERVAL = 1000 / 60;
+            //var ANIMATE_INTERVAL_DELAY = Math.max(Math.ceil(1000 / FPS - MAX_ANIMATE_INTERVAL), 0);
+            var ANIMATE_INTERVAL_DELAY = Math.ceil(1000 / FPS) - 5;
+            
+            function animate() {
+                var timeout = setTimeout(
+                    function() {
+                        requestAnimationFrame(animate);
+                        _threeJsHelper.redraw();
+                        
+                        clearTimeout(timeout);
+                    }, ANIMATE_INTERVAL_DELAY);
+            }
+
+            $(document).ready(function() {
+                _threeJsHelper = new ThreeJsHelper({
+                    container: $('#glscene')[0],
+                });
+                
+                animate();
+                
+                
+            });
+            
+        </script>
+
+    </head>
+
+    <body>
+        <div style="position: absolute; top: 0px; left: 0px; width: 100%; height: 28px; background-color: #e1e1e1; padding: 2px 6px 2px 6px; margin: 0px; font-size: larger;">
+            <input type="button" id="btnVisibleAxes" value="axes (on/off)" style=" font-size: larger;"/>
+            <input type="button" id="btnVisibleStats" value="stats (on/off)" style=" font-size: larger;"/>
+            
+            <input type="button" id="btnAddBall" value="add a ball" style=" font-size: larger;"/>
+            <input type="button" id="btnAddBall1000" value="add 1000 balls" style=" font-size: larger;"/>
+        </div>
+        <div id="glscene" style="position: absolute; left:0px; top:30px; bottom: 0px;"></div>
+    </body>
+</html>
