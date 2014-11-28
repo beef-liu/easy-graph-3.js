@@ -1,18 +1,17 @@
 /**
  * 
- * @param {container:Dom Node, bgColor:int, width:int, height:int, renderer:THREE.WebGLRenderer | THREE.CanvasRenderer, camera:THREE.Camera, light:THREE.Light, enableStats:} args
- * container:   dom node which contains canvas
- * bgColor:     (default 0xffffff) background color
- * width:       (default window.innerWidth) width of canvas
- * height:      (default window.innerHeight) height of canvas
- * renderer:    (default THREE.WebGLRenderer or THREE.CanvasRenderer).
- * camera:
- * light:
- * enableStats: (default true) 
+ * @param args {
+ *      container:Dom Node,     //required. dom node which contains canvas
+ *      renderer:               //optional. (default: THREE.WebGLRenderer, or THREE.CanvasRenderer if browser does not support WebGL.) 
+ *      bgColor:int,            //optional. (default: 0xffffff) background color
+ *      width:int,              //optional. (default: window.innerWidth) width of canvas
+ *      height:int,             //optional. (default: window.innerHeight) height of canvas
+ *      camera:THREE.Camera,    //optional. (default: THREE.WebGLRenderer or THREE.CanvasRenderer).
+ *      light:THREE.Light,      //optional. (default: THREE.DirectionalLight(0xFF0000, 1.0, 0))
+ *      enableStats:boolean     //optional. (default: true) 
+ * }
+ * 
  */
-
-// _ThreeJsHelper_idSeq = 1;
-
 ThreeJsHelper = function(args) {
     // this.newId = function() {
         // return "ThreeJsHelper_" + (_ThreeJsHelper_idSeq++);  

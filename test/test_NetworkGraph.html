@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="UTF-8">
-        <title>Test ThreeJsHelper</title>
+        <title>Test NetworkGraph</title>
 
         <script src='../lib/jquery-1.9.1.min.js'></script>
         
@@ -36,16 +36,74 @@
                         clearTimeout(timeout);
                     }, ANIMATE_INTERVAL_DELAY);
             }
-
+            
+            var _gridDist = new EG3.GridPositionDistribution(100);
+            
+            var originPoint = {x: 0, y: 0, z: 0};
+            var direction = {x: 0, y: 0, z: 1};
+            var maxCount = 300;
+            var space = 100;
+            var fov = 135;
+            var _sphereDist = new EG3.QuaterSpherePositionDistribution(originPoint, direction, maxCount, space, fov);
+            
+            var BallRadius = 6;
+            
             $(document).ready(function() {
                 _threeJsHelper = new ThreeJsHelper({
                     container: $('#glscene')[0],
                 });
                 
                 animate();
+
+                _threeJsHelper.camera.position.set(200, 500, 1000);
+
+                //create material and geom -----------------------------
+                var color = 0xff0000;
+                var mat = new THREE.MeshBasicMaterial({color: color});
+                var geom = new THREE.SphereGeometry(BallRadius);
                 
+                //test 1
+                $('#btnTestGridDistribute').click(function() {
+                    var pos = _gridDist.nextPosition(); 
+                    var ball = new THREE.Mesh(geom, mat);
+                    ball.position.set(pos.x, pos.y, pos.z);
+                    
+                    _threeJsHelper.scene.add(ball);
+                });
                 
+                //test 2
+                $('#btnTestSphereDistribute').click(function() {
+                    for(var i = 0; i < maxCount; i++) {
+                        var pos = _sphereDist.nextPosition(); 
+                        var ball = new THREE.Mesh(geom, mat);
+                        ball.position.set(pos.x, pos.y, pos.z);
+                        _threeJsHelper.scene.add(ball);
+                    }
+                    
+                });
+
             });
+            
+            function test1() {
+                var ball = new THREE.Object3D();
+                
+                ball.add(createBall(0xff0000, 0, 0, 0));
+                ball.add(createBall(0xff0000, 0, 100, 0));
+                ball.add(createBall(0xff0000, 0, 200, 0));
+                
+                ball.position.set(-150, 0, 0);
+                
+                _threeJsHelper.scene.add(ball);
+            }
+            
+            function createBall(color, x, y, z) {
+                var mat = new THREE.MeshBasicMaterial({color: color});
+                var geom = new THREE.SphereGeometry(50);
+                var ball = new THREE.Mesh(geom, mat);
+                ball.position.set(x, y, z);
+             
+                return ball;   
+            }
             
         </script>
 
@@ -53,8 +111,8 @@
 
     <body>
         <div style="position: absolute; top: 0px; left: 0px; width: 100%; height: 28px; background-color: #e1e1e1; padding: 2px 6px 2px 6px; margin: 0px; font-size: larger;">
-            <input type="button" id="btnVisibleAxes" value="axes (on/off)" style=" font-size: larger;"/>
-            <input type="button" id="btnVisibleStats" value="stats (on/off)" style=" font-size: larger;"/>
+            <input type="button" id="btnTestGridDistribute" value="Test GridPositionDistribution" style=" font-size: larger;"/>
+            <input type="button" id="btnTestSphereDistribute" value="Test QuaterSpherePositionDistribution" style=" font-size: larger;"/>
             
             <input type="button" id="btnAddBall" value="add a ball" style=" font-size: larger;"/>
             <input type="button" id="btnAddBall1000" value="add 1000 balls" style=" font-size: larger;"/>
