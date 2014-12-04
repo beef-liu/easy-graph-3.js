@@ -1,23 +1,36 @@
+/*
 EG3.GraphEdge = function(srcId, destId) {
     this.srcId = srcId;
     this.destId = destId;
 };
+*/
 
-EG3.Graph = function(srcId, destIdList) {
-    this.position = null;
-     
-    this.srcId = srcId;
-
-    if (destIdList) {
-        this.destIdList = destIdList;
-    } else {
-        this.destIdList = [];
+/**
+ * @param vid ID of this vertex
+ */
+EG3.GraphNode = function(vid, vtype) {
+    //this.position = null;
+    this.vid = null;
+    if(vid != undefined) {
+        this.vid = vid;
     }
-
+    
+    this.vtype = null;
+    if(vtype != undefined) {
+        this.vtype = vtype;
+    }
+    
     /**
-     * add Neighbours
-     * @param destIds String[]
+     * String[] ID list of parents
      */
+    this.parents = [];
+    
+    /**
+     * String[] ID list of children
+     */
+    this.children = [];
+
+    /*
     this.addDestIds = function(destIds) {
         var destArray;
         if ( typeof destIds == "string") {
@@ -33,15 +46,12 @@ EG3.Graph = function(srcId, destIdList) {
         });
     };
 
-    /**
-     * @param edges GraphEdge[]
-     */
     this.addEdges = function(edges) {
         edges.forEach(function(e) {
             this.destIdList.push(e.destId);
         });
     };
-
+    */
 };
 
 /*
@@ -198,7 +208,8 @@ EG3.GridPositionDistribution = function(gridWidth) {
         _roundEndPos.x = x;
         _roundEndPos.y = y;
         _roundEndPos.z = z;
-        
+
+        var i;        
         //up
         for(i = 1; i <= d; i++) {
             y += step;
@@ -233,7 +244,7 @@ EG3.GridPositionDistribution = function(gridWidth) {
  * @param maxCount: int
  * @param space: int                                    //space between 2 points
  */
-EG3.QuaterSpherePositionDistribution = function(originPoint, direction, maxCount, space, fov) {
+EG3.SpherePositionDistribution = function(originPoint, direction, maxCount, space, fov) {
     var FloorPI = 3;
 
     this.fov = 90;
@@ -347,11 +358,148 @@ EG3.QuaterSpherePositionDistribution = function(originPoint, direction, maxCount
     }
 };
 
+EG3.GridSpherePositionDistribution = function(gridWidth, center, surfaceCenter) {
+    this.gridWidth = gridWidth;
+    this.center = new THREE.Vector3(center.x, center.y, center.z);
+    this.surfaceCenter = new THREE.Vector3(surfaceCenter.x, surfaceCenter.y, surfaceCenter.z);
+    this.radius = this.surfaceCenter.clone().sub(center).length();
+    
+    //var _ballIndex; 
+    var _gridCellCount;
+    var _curRoundGrids = [];
+    
+    var _quaternionForRotate = new THREE.Quaternion();
+    var _angleStep;
+    var _angleX, _angleY;
+    var _eulerTmp = new THREE.Euler(0, 0, 0, 'YXZ');
+    var _centerVector;
+    
+    this.reset = function() {
+        _gridCellCount = 0;
+        
+        _curRoundGrids.splice(0, _curRoundGrids.length);
+        _curRoundGrids.push(this.surfaceCenter);
+        
+        //_roundEndVector = new THREE.Vector3(this.surfaceCenter.x - this.center.x, this.surfaceCenter.y - this.center.y, this.surfaceCenter.z - this.center.z);
+        
+        _angleStep = this.gridWidth / this.radius;
+
+        _angleX = 0;
+        _angleY = 0;
+
+        //init rotation matrix -------
+        {
+            var vZ = new THREE.Vector3(0, 0, 1);
+            var axisUnitVector = this.surfaceCenter.clone().sub(this.center).normalize();
+            var angle = 0;
+            if(!axisUnitVector.equals(vZ)) {
+                var triangle = new THREE.Triangle(new THREE.Vector3(0, 0, 0), vZ, axisUnitVector);
+                var vNormal = triangle.normal();
+                angle = Math.acos(vZ.dot(axisUnitVector));
+                _quaternionForRotate.setFromAxisAngle(vNormal, angle);
+            } else {
+                _quaternionForRotate = null;
+            }
+        }
+        
+        _centerVector = new THREE.Vector3(0, 0, this.radius);
+
+        // _quaternionForRotateUp.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -_angleStep);
+        // _quaternionForRotateDown.setFromAxisAngle(new THREE.Vector3(1, 0, 0), _angleStep);
+                
+        // _eulerRightDown = new THREE.Euler(_angleStep, _angleStep, 0, 'XYZ' );
+        // _eulerRight = new THREE.Euler(0, _angleStep, 0, 'XYZ' );
+        // _eulerLeft = new THREE.Euler(0, -_angleStep, 0, 'XYZ' );
+        // _eulerUp = new THREE.Euler(-_angleStep, 0, 0, 'XYZ' );
+        // _eulerDown = new THREE.Euler(_angleStep, 0, 0, 'XYZ' );
+         
+    };
+
+    this.reset();
+    
+    this.nextPosition = function() {
+        //_ballIndex ++;
+        
+        //position of grid
+        var x, y, z;
+
+        if(_curRoundGrids.length == 0) {
+            //create positions of this round
+            _gridCellCount += 2;
+            
+            createRoundPositions(_gridCellCount, this.gridWidth);
+        }     
+
+        //var randIndex = Math.min(Math.max(Math.floor(Math.random() * _curRoundGrids.length), _curRoundGrids.length - 1), 0);
+        var randIndex = 0;
+        var pos = _curRoundGrids.splice(randIndex, 1)[0];
+        
+        return pos;
+    };
+    
+    function createRoundPositions(d, angleStep) {
+        //1st point
+        _angleY += _angleStep;
+        _angleX += _angleStep;
+        _curRoundGrids.push(positionRotateFromCenterVector());
+        
+        //_roundEndVector = vectorTmp.clone();
+        
+        //up
+        for(i = 1; i <= d; i++) {
+            _angleX -= _angleStep;
+            _curRoundGrids.push(positionRotateFromCenterVector());
+        }
+
+        //left
+        for(i = 1; i <= d; i++) {
+            _angleY -= _angleStep;
+            _curRoundGrids.push(positionRotateFromCenterVector());
+        }
+
+        //down
+        for(i = 1; i <= d; i++) {
+            _angleX += _angleStep;
+            _curRoundGrids.push(positionRotateFromCenterVector());
+        }
+        
+        //right
+        for(i = 1; i <= d; i++) {
+            _angleY += _angleStep;
+            if(i != d) {
+                _curRoundGrids.push(positionRotateFromCenterVector());
+            }
+        }
+    }
+    
+    function positionRotateFromCenterVector() {
+        _eulerTmp.set(_angleX, _angleY, 0, 'YXZ');
+        var vectorTmp = _centerVector.clone().applyEuler(_eulerTmp);
+        
+        //rotate and translate
+        if(_quaternionForRotate) {
+            vectorTmp.applyQuaternion(_quaternionForRotate);
+        }
+        return vectorTmp.add(this.center);
+    }    
+
+    function rotateLeft(vector, angle) {
+        var quaternionForRotate = new THREE.Quaternion();
+        quaternionForRotate.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -_angleStep);
+    }
+    
+    function vectorToPosition(vector) {
+        return new THREE.Vector3(vector.x + this.center.x, vector.y + this.center.y, vector.z + this.center.z);
+    }
+};
+
+
 /**
  * @param args {
  *      scene: THREE.Scene,         //required. 
  *      center: THREE.Vector3,      //optional. (default: (0, 0, 0))
  *      gridWidth: float,           //optional. (default: 200)
+ *      gridRadianMax: float        //optional. (default: Math.PI / 2)
  *      lineColor: int,             //optional. (default: 0x0) 
  *      pointColor: int,            //optional. (default: 0xff0000)
  *      pointRadius: float,         //optional. (default: 50) It is just a minimal for these graph whose count of edges is 0 or 1. 
@@ -367,12 +515,14 @@ EG3.NetworkGraph = function(args) {
     this.scene = scene;
     this.center = new THREE.Vector3(0, 0, 0);
     this.gridWidth = 200;
+    this.gridRadianMax = Math.PI / 2;
 
     this.lineColor = 0x0;
     
     this.pointColor = 0xfd5a5a;
-    this.pointRadius = 50;
-    
+    this.pointRadius = 3;
+    this.pointRadiusMax = this.pointRadius * 10;
+        
     
     this.isDrawLines = true;
     this.isDrawNeighbours = true;
@@ -382,6 +532,9 @@ EG3.NetworkGraph = function(args) {
     }
     if(args.gridWidth != undefined) {
         this.gridWidth = args.gridWidth;
+    }
+    if(args.gridRadianMax != undefined) {
+        this.gridRadianMax = args.gridRadianMax;
     }
 
     if(args.lineColor != undefined) {
@@ -403,84 +556,119 @@ EG3.NetworkGraph = function(args) {
     
 
     //internal variables -----
-    var _pointDist = new GridPositionDistribution(this.gridWidth);
+    //var _sphereDistFov = 90;
+    //var _rootNodeDist;
     
     //key: srcId    value: Object3D(.userData is Grpah type)
     var _ballMap = new EG3.Map();
     
     var _matPoint;
     var _matLine;
-    var _o3dContainer = new THREE.Object3D();
+    var _o3dContainer;
     var _o3dPoints;
     var _geomLines;
     
+    //var _rootGridSphereCenter;
+    var _childrenFocusPosition;
+    
     
     //functions ----------------
-    this.redraw = function() {
-        
-    };
-
     /**
      * Clear all graph objects, but only redraw when invoking redraw
      */
     this.clear = function() {
         _ballMap.clear();
         
-        _o3dContainer.remove(_o3dPoints);
-        _o3dContainer.remove(_o3dLines);
+        if(_o3dContainer) {
+            this.scene.remove(_o3dContainer);
+        }
         
         delete _o3dPoints;
         delete _o3dLines;
-        
-        _pointDist.reset();
+        delete _o3dContainer;
     };
     
     /**
-     * clear and load graphs
-     * @param graphs Graph[] 
+     * clear and load graphNodes
+     * @param graphs GraphNode[] 
      */
-    this.reloadGraphs = function(graphs) {
+    this.reloadGraphNodes = function(graphNodes) {
         this.clear();
 
-        //init vars        
+        //init vars
         _matPoint = new THREE.MeshBasicMaterial({color: this.pointColor});
-        _pointDist.ballMat = _matPoint;
+        //_rootNodeDist.ballMat = _matPoint;
         
         _matLine = new THREE.LineBasicMaterial({color: this.lineColor});
         
         _o3dPoints = new THREE.Object3D()
         _geomLines = new THREE.Geometry();
+
+        _o3dContainer = new THREE.Object3D();
+        _o3dContainer.add(_o3dPoints);
+        this.scene.add(_o3dContainer);
         
         //sort by edge count
         /*
         graphs.sort(function(v1, v2) {
             return v2.destIdList.length - v1.destIdList.length;
         });
-        */
 
+        //calculate the radius of biggest ball
+        if(graphs[0].destIdList.length > 0) {
+            var maxCount = graphs[0].destIdList.length;
+            var sphereOrigin = {x:0, y:0, z:0};
+            var sphereDir = {x:0, y:0, z:1};
+            var sphereDist = makeSphereDistribution(sphereOrigin, sphereDir, maxCount);
+            _rootNodeDist.gridWidth = sphereDist.radius * Math.sin(Math.PI * (_sphereDistFov / 2) / 180) * 2;
+        } 
         
-        //iterate every one to make ball
+        //iterate every one to make balls
         graphs.forEach(function(graph){
-            makeGraph(graph);
+            makeGraphSrcNode(graph);
         });
         
         //iterate every one to make neighbours
         if(this.isDrawNeighbours) {
             graphs.forEach(function(graph){
-                makeGraphOfNeighbours(graph);
+                //makeGraphOfNeighbours(graph);
             });
         }
-        
+        */
+       
+       //var gridSphereRadius = Math.max(makeGridSphereRadius(graphNodes.length), 1000);
+       var gridSphereRadius = 1000;
+       var gridSphereCenter = new THREE.Vector(this.center.x, this.center.y, this.center.z - gridSphereRadius); 
+       // _rootNodeDist = new EG3.GridSpherePositionDistribution(this.gridWidth, gridSphereCenter, this.center);
+       //_rootGridSphereCenter = gridSphereCenter;
+       _childrenFocusPosition = new THREE.Vector3(gridSphereCenter.x, gridSphereCenter.y, gridSphereCenter.z + gridSphereRadius / 2);
+       makeGraphNodesNoRecursion(graphNodes, gridSphereCenter);
     };
     
-    
     //internal functions ----------------------------
+    function makeGridSphereRadius(maxCount) {
+        return this.gridWith * Math.pow(maxCount, 0.5) / this.gridRadianMax;
+    }
+    function makeSphereDistribution(originPoint, direction, maxCount) {
+        var space = this.pointRadiusMax;
+
+        return new EG3.SpherePositionDistribution(originPoint, direction, maxCount, space, _sphereDistFov);
+    }
+    function getBallRadiusOfGraph(childrenCount) {
+        if(childrenCount == 0) {
+            return this.pointRadius;
+        } else {
+            return this.pointRadius * Math.log(childrenCount) * 2;
+        }
+    }
+    
+    /* old solution (Grid)
     function makeGraph(graph) {
         var ratio = Math.pow(Math.max(graph.destIdList.length, 1), 0.33);
         var radius = this.pointRadius * ratio;
         
         var x, y, z;
-        var gridPos = _pointDist.nextPosition(radius);
+        var gridPos = _rootNodeDist.nextPosition(radius);
         //random diverse            
         var diverseStep = this.gridWidth / 2;
         x = gridPos.x + diverseStep * (Math.random() - 0.5);  
@@ -489,22 +677,156 @@ EG3.NetworkGraph = function(args) {
 
         //var color = nextColor();
         // var mat = new THREE.MeshBasicMaterial({color: color});
-        var geom = new THREE.SphereGeometry(radius);
+        var ballR = getBallRadiusOfGraph(graph);
+        var geom = new THREE.SphereGeometry(ballR);
         var ball = new THREE.Mesh(geom, _matPoint);
         ball.position.set(x, y, z);
 
         ball.userData = graph;
         _o3dPoints.add(ball);
         
+        //save to map
         _ballMap.set(graph.srcId, ball);
     }
+    */
+
+    function makeGraphNodesNoRecursion(graphNodes, gridSphereCenter) {
+        var graphNodesPackageBuffer = [];
+        var graphNodesPackageBuffer2 = [];
+        var unrenderedGraphNodesMap = new EG3.Map();
+
+        //save in buffer and filter root nodes
+        var nodesPackage = {parentPos: gridSphereCenter, children:[]};
+        graphNodes.forEach(function(graphNode) {
+            if(graphNode.vid != undefined && graphNode.vid.length > 0) {
+                unrenderedGraphNodesMap.set(graphNode.vid, graphNode);
+                
+                if(graphNode.parents.length == 0) {
+                    nodesPackage.children.unshift(graphNode);
+                }
+            }
+        });
+        if(nodesPackage.length == 0) {
+            graphNodes.sort(function(v1, v2){
+                return v2.destIdList.length - v1.destIdList.length;
+            });
+            
+            nodesPackage.children = graphNodes.splice(0, 1000);
+        }
+        
+        graphNodesPackageBuffer.unshift(nodesPackage);
+
+        var newGridSphereCenter;
+        while(graphNodesPackageBuffer.length != 0) {
+            //draw balls for this level -----------
+            var nodesPackage;
+            while((nodesPackage = graphNodesPackageBuffer.pop())) {
+                //position distribution
+                var posDist;
+                {
+                    newGridSphereCenter = nodesPackage.parentPos;  
+                    var newGridSphereRadius = Math.min(makeGridSphereRadius(nodesPackage.children.length), this.gridWidth * 2);
+                    var newGridSphereSurfaceCenter = newGridSphereCenter.clone().sub(_childrenFocusPosition);
+                    var length = newGridSphereSurfaceCenter.length();
+                    var scalar = (length + newGridSphereRadius) / length;
+                    newGridSphereSurfaceCenter.multiplyScalar(scalar);
+                    
+                    posDist = new EG3.GridSpherePositionDistribution(this.gridWidth, newGridSphereCenter, newGridSphereSurfaceCenter);
+                }
     
-    function makeGraphOfNeighbours(graph) {
-        var ratio = Math.pow(Math.max(graph.destIdList.length, 1), 0.33);
-        var radius = this.pointRadius * ratio;
+                var graph;
+                while((graph = nodesPackage.children.pop())) {
+                    if(unrenderedGraphNodesMap.get(graph.vid) == undefined) {
+                        continue;
+                    }
+                    unrenderedGraphNodesMap.del(graph.vid);
+                    
+                    var thisPos = posDist.nextPosition();   
+                
+                    var ballR = getBallRadiusOfGraph(graph.children.length);
+                    var geom = new THREE.SphereGeometry(ballR);
+                    var ball = new THREE.Mesh(geom, _matPoint);
+                    ball.position.set(thisPos.x, thisPos.y, thisPos.z);
+            
+                    //ball.userData = graph;
+                    _o3dPoints.add(ball);
+                    
+                    //children
+                    if(graph.children.length > 0) {
+                        var newNodesPackage = {parentPos: thisPos.clone(), children:[]}; 
+                        graph.children.forEach(function(node) {
+                            newNodesPackage.children.unshift(node);    
+                        });
+                        graphNodesPackageBuffer2.unshift(newNodesPackage);
+                    }
+                }
+            }
+            
+            //for deeper level
+            graphNodesPackageBuffer = graphNodesPackageBuffer2.splice(0, graphNodesPackageBuffer2.length);
+        }
+        
+        if(unrenderedGraphNodesMap.size() > 0) {
+            var newGraphNodes = [];
+            unrenderedGraphNodesMap.forEach(function(node) {
+                newGraphNodes.push(node);
+            });
+            
+            makeGraphNodesNoRecursion(newGraphNodes, newGridSphereCenter);
+        }
+    }
+   
+   /* 
+    function makeGraphNodes(graphNodes, gridSphereCenter, gridSphereSurfaceCenter) {
+        var posDist = new EG3.GridSpherePositionDistribution(this.gridWidth, gridSphereCenter, gridSphereSurfaceCenter);
+        
+        graphNodes.forEach(function(graph) {
+            var thisPos = posDist.nextPosition();   
+        
+            var ballR = getBallRadiusOfGraph(graph.children.length);
+            var geom = new THREE.SphereGeometry(ballR);
+            var ball = new THREE.Mesh(geom, _matPoint);
+            ball.position.set(thisPos.x, thisPos.y, thisPos.z);
+    
+            //ball.userData = graph;
+            _o3dPoints.add(ball);
+            
+            //recurse children
+            if(graph.children.length > 0) {
+               var newGridSphereRadius = Math.min(makeGridSphereRadius(graph.children.length), this.gridWidth * 2);
+               var newGridSphereCenter = thisPos.clone();
+               var newGridSphereSurfaceCenter = gridSphereCenter.clone().sub(_childrenFocusPosition);
+               var length = gridSphereSurfaceCenter.length();
+               var scalar = (length + gridSphereRadius) / length;
+               newGridSphereSurfaceCenter.multiplyScalar(scalar);
+               // _rootNodeDist = new EG3.GridSpherePositionDistribution(this.gridWidth, gridSphereCenter, this.center);
+               
+               //no recursion, deeper visiting move to invoker method
+               makeGraphNodes(graph.children, newGridSphereCenter, newGridSphereSurfaceCenter);
+            }
+        });
+    }
+    */
+   
+    /*
+    function makeNeighboursGraph(graph, ) {
+        //sphere distribution        
+        var childrenCount = graph.destIdList.length;
+        if(childrenCount > 0) {
+            var sphereOrigin = {x:0, y:0, z:0};
+            var sphereDir;
+            if(parentPosition == undefined) {
+                sphereDir = {x:0, y:0, z:1};
+            } else {
+                sphereDir = {x:position.x - parentPosition.x, y:position.y - parentPosition.y, z:position.z - parentPosition.z};
+            }
+            var sphereDist = makeSphereDistribution(sphereOrigin, sphereDir, childrenCount);
+        }
+
         graph.destIdList.forEach(function(destId) {
             
         });
     };
+    */
 };
 

@@ -45,6 +45,10 @@ EG3.Map = function() {
         if(index != undefined) {
             delete _indexMap[key];
             delete _entryArray.splice(index, 1);
+            
+            return true;
+        } else {
+            return false;
         }
     };
     
@@ -68,15 +72,24 @@ EG3.Map = function() {
         if(index == undefined) {
             _indexMap[key] = _entryArray.length;
             _entryArray.push({key: key, value: value});
+            
+            return true;
         } else {
             _entryArray[index].value = value;
+            return false;
         }
     };
     
     this.add = function(obj) {
-      for(var key in obj) {
-          this.set(key, obj[key]);
-      }
+        var cnt = 0;
+        
+        for(var key in obj) {
+            if(this.set(key, obj[key])) {
+                cnt ++;
+            }
+        }
+        
+        return cnt;
     };
     
     this.get = function(key) {
