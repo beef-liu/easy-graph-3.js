@@ -512,7 +512,7 @@ EG3.GridSpherePositionDistribution = function(gridWidth, center, surfaceCenter) 
  * 
  */
 EG3.NetworkGraph = function(args) {
-    this.scene = scene;
+    this.scene = args.scene;
     this.center = new THREE.Vector3(0, 0, 0);
     this.gridWidth = 200;
     this.gridRadianMax = Math.PI / 2;
@@ -638,7 +638,7 @@ EG3.NetworkGraph = function(args) {
        
        //var gridSphereRadius = Math.max(makeGridSphereRadius(graphNodes.length), 1000);
        var gridSphereRadius = 1000;
-       var gridSphereCenter = new THREE.Vector(this.center.x, this.center.y, this.center.z - gridSphereRadius); 
+       var gridSphereCenter = new THREE.Vector3(this.center.x, this.center.y, this.center.z - gridSphereRadius); 
        // _rootNodeDist = new EG3.GridSpherePositionDistribution(this.gridWidth, gridSphereCenter, this.center);
        //_rootGridSphereCenter = gridSphereCenter;
        _childrenFocusPosition = new THREE.Vector3(gridSphereCenter.x, gridSphereCenter.y, gridSphereCenter.z + gridSphereRadius / 2);
@@ -646,19 +646,14 @@ EG3.NetworkGraph = function(args) {
     };
     
     //internal functions ----------------------------
-    function makeGridSphereRadius(maxCount) {
-        return this.gridWith * Math.pow(maxCount, 0.5) / this.gridRadianMax;
+    function makeGridSphereRadius(maxCount, gridWith, gridRadianMax) {
+        return gridWith * Math.pow(maxCount, 0.5) / gridRadianMax;
     }
-    function makeSphereDistribution(originPoint, direction, maxCount) {
-        var space = this.pointRadiusMax;
-
-        return new EG3.SpherePositionDistribution(originPoint, direction, maxCount, space, _sphereDistFov);
-    }
-    function getBallRadiusOfGraph(childrenCount) {
+    function getBallRadiusOfGraph(childrenCount, pointRadius) {
         if(childrenCount == 0) {
-            return this.pointRadius;
+            return pointRadius;
         } else {
-            return this.pointRadius * Math.log(childrenCount) * 2;
+            return pointRadius * Math.log(childrenCount) * 2;
         }
     }
     
@@ -693,6 +688,7 @@ EG3.NetworkGraph = function(args) {
     function makeGraphNodesNoRecursion(graphNodes, gridSphereCenter) {
         var graphNodesPackageBuffer = [];
         var graphNodesPackageBuffer2 = [];
+        var allGraphNodesMap = new EG3.Map();
         var unrenderedGraphNodesMap = new EG3.Map();
 
         //save in buffer and filter root nodes
@@ -700,6 +696,7 @@ EG3.NetworkGraph = function(args) {
         graphNodes.forEach(function(graphNode) {
             if(graphNode.vid != undefined && graphNode.vid.length > 0) {
                 unrenderedGraphNodesMap.set(graphNode.vid, graphNode);
+                allGraphNodesMap.set(graphNode.vid, graphNode);
                 
                 if(graphNode.parents.length == 0) {
                     nodesPackage.children.unshift(graphNode);
@@ -725,12 +722,13 @@ EG3.NetworkGraph = function(args) {
                 var posDist;
                 {
                     newGridSphereCenter = nodesPackage.parentPos;  
-                    var newGridSphereRadius = Math.min(makeGridSphereRadius(nodesPackage.children.length), this.gridWidth * 2);
+                    var newGridSphereRadius = Math.min(
+                        makeGridSphereRadius(nodesPackage.children.length, this.gridWith, this.gridRadianMax), 
+                        this.gridWidth * 2);
                     var newGridSphereSurfaceCenter = newGridSphereCenter.clone().sub(_childrenFocusPosition);
                     var length = newGridSphereSurfaceCenter.length();
                     var scalar = (length + newGridSphereRadius) / length;
                     newGridSphereSurfaceCenter.multiplyScalar(scalar);
-                    
                     posDist = new EG3.GridSpherePositionDistribution(this.gridWidth, newGridSphereCenter, newGridSphereSurfaceCenter);
                 }
     
@@ -743,7 +741,7 @@ EG3.NetworkGraph = function(args) {
                     
                     var thisPos = posDist.nextPosition();   
                 
-                    var ballR = getBallRadiusOfGraph(graph.children.length);
+                    var ballR = getBallRadiusOfGraph(graph.children.length, this.pointRadius);
                     var geom = new THREE.SphereGeometry(ballR);
                     var ball = new THREE.Mesh(geom, _matPoint);
                     ball.position.set(thisPos.x, thisPos.y, thisPos.z);
@@ -754,8 +752,11 @@ EG3.NetworkGraph = function(args) {
                     //children
                     if(graph.children.length > 0) {
                         var newNodesPackage = {parentPos: thisPos.clone(), children:[]}; 
-                        graph.children.forEach(function(node) {
-                            newNodesPackage.children.unshift(node);    
+                        graph.children.forEach(function(childId) {
+                            var node = allGraphNodesMap.get(childId);
+                            if(node != undefined) {
+                                newNodesPackage.children.unshift(node);    
+                            }
                         });
                         graphNodesPackageBuffer2.unshift(newNodesPackage);
                     }
@@ -766,6 +767,7 @@ EG3.NetworkGraph = function(args) {
             graphNodesPackageBuffer = graphNodesPackageBuffer2.splice(0, graphNodesPackageBuffer2.length);
         }
         
+        //possibly some nodes do not connect to 1st level node.
         if(unrenderedGraphNodesMap.size() > 0) {
             var newGraphNodes = [];
             unrenderedGraphNodesMap.forEach(function(node) {
@@ -783,7 +785,7 @@ EG3.NetworkGraph = function(args) {
         graphNodes.forEach(function(graph) {
             var thisPos = posDist.nextPosition();   
         
-            var ballR = getBallRadiusOfGraph(graph.children.length);
+            var ballR = getBallRadiusOfGraph(graph.children.length, this.pointRadius);
             var geom = new THREE.SphereGeometry(ballR);
             var ball = new THREE.Mesh(geom, _matPoint);
             ball.position.set(thisPos.x, thisPos.y, thisPos.z);
@@ -820,13 +822,16 @@ EG3.NetworkGraph = function(args) {
             } else {
                 sphereDir = {x:position.x - parentPosition.x, y:position.y - parentPosition.y, z:position.z - parentPosition.z};
             }
-            var sphereDist = makeSphereDistribution(sphereOrigin, sphereDir, childrenCount);
+            var sphereDist = makeSphereDistribution(sphereOrigin, sphereDir, childrenCount, this.pointRadiusMax);
         }
 
         graph.destIdList.forEach(function(destId) {
             
         });
     };
+    function makeSphereDistribution(originPoint, direction, maxCount, space) {
+        return new EG3.SpherePositionDistribution(originPoint, direction, maxCount, space, _sphereDistFov);
+    }
     */
 };
 

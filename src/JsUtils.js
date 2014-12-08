@@ -72,6 +72,7 @@ EG3.Map = function() {
         if(index == undefined) {
             _indexMap[key] = _entryArray.length;
             _entryArray.push({key: key, value: value});
+
             
             return true;
         } else {
