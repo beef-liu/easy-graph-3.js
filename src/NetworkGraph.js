@@ -560,6 +560,9 @@ EG3.NetworkGraph = function(args) {
     
     var _callbackAfterPointAdded = args.callbackAfterPointAdded;
     
+    this.o3dPoints = undefined;
+    this.o3dLines = undefined;
+    
 
     //internal variables -----
     var _center = this.center;
@@ -622,6 +625,9 @@ EG3.NetworkGraph = function(args) {
         _o3dPoints = new THREE.Object3D()
         _o3dLines = new THREE.Object3D();
         _geomLines = new THREE.Geometry();
+        
+        this.o3dPoints = _o3dPoints;
+        this.o3dLines = _o3dLines;
 
         _o3dContainer = new THREE.Object3D();
         _o3dContainer.add(_o3dPoints);
