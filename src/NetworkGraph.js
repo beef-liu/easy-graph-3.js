@@ -160,7 +160,8 @@ EG3.GridPositionDistribution = function(gridWidth) {
         this.gridWidth = gridWidth;
     }
     
-    //var _ballIndex; 
+    //var _ballIndex;
+    var _gridWidth = this.gridWidth;
     var _gridCellCount, _roundEndPos;
     var _curRoundGrids = [];
     
@@ -364,7 +365,9 @@ EG3.GridSpherePositionDistribution = function(gridWidth, center, surfaceCenter) 
     this.surfaceCenter = new THREE.Vector3(surfaceCenter.x, surfaceCenter.y, surfaceCenter.z);
     this.radius = this.surfaceCenter.clone().sub(center).length();
     
-    //var _ballIndex; 
+    //var _ballIndex;
+    var _gridWidth = this.gridWidth;
+    var _center = this.center; 
     var _gridCellCount;
     var _curRoundGrids = [];
     
@@ -480,7 +483,7 @@ EG3.GridSpherePositionDistribution = function(gridWidth, center, surfaceCenter) 
         if(_quaternionForRotate) {
             vectorTmp.applyQuaternion(_quaternionForRotate);
         }
-        return vectorTmp.add(this.center);
+        return vectorTmp.add(_center);
     }    
 
     function rotateLeft(vector, angle) {
@@ -489,22 +492,23 @@ EG3.GridSpherePositionDistribution = function(gridWidth, center, surfaceCenter) 
     }
     
     function vectorToPosition(vector) {
-        return new THREE.Vector3(vector.x + this.center.x, vector.y + this.center.y, vector.z + this.center.z);
+        return new THREE.Vector3(vector.x + _center.x, vector.y + _center.y, vector.z + _center.z);
     }
 };
 
 
 /**
  * @param args {
- *      scene: THREE.Scene,         //required. 
- *      center: THREE.Vector3,      //optional. (default: (0, 0, 0))
- *      gridWidth: float,           //optional. (default: 200)
- *      gridRadianMax: float        //optional. (default: Math.PI / 2)
- *      lineColor: int,             //optional. (default: 0x0) 
- *      pointColor: int,            //optional. (default: 0xff0000)
- *      pointRadius: float,         //optional. (default: 50) It is just a minimal for these graph whose count of edges is 0 or 1. 
- *      isDrawLines: boolean,       //optional. (default: true)
- *      isDrawNeighbours: boolean,  //optional. (default: true)
+ *      scene: THREE.Scene,                                             //required. 
+ *      center: THREE.Vector3,                                          //optional. (default: (0, 0, 0))
+ *      gridWidth: float,                                               //optional. (default: 200)
+ *      gridRadianMax: float                                            //optional. (default: Math.PI / 2)
+ *      lineColor: int,                                                 //optional. (default: 0x0) 
+ *      pointColor: int,                                                //optional. (default: 0xff0000)
+ *      pointRadius: float,                                             //optional. (default: 50) It is just a minimal for these graph whose count of edges is 0 or 1. 
+ *      isDrawLines: boolean,                                           //optional. (default: true)
+ *      isDrawNeighbours: boolean,                                      //optional. (default: true)
+ *      callbackAfterPointAdded: function(THREE.Object3d, GraphNode){}  //optional.
  * }
  * 
  * There are 2 type of elements shown in canvas, point and line. 
@@ -514,13 +518,13 @@ EG3.GridSpherePositionDistribution = function(gridWidth, center, surfaceCenter) 
 EG3.NetworkGraph = function(args) {
     this.scene = args.scene;
     this.center = new THREE.Vector3(0, 0, 0);
-    this.gridWidth = 200;
+    this.gridWidth = 100;
     this.gridRadianMax = Math.PI / 2;
 
-    this.lineColor = 0x0;
+    this.lineColor = 0x1010ff;
     
     this.pointColor = 0xfd5a5a;
-    this.pointRadius = 3;
+    this.pointRadius = 8;
     this.pointRadiusMax = this.pointRadius * 10;
         
     
@@ -554,8 +558,21 @@ EG3.NetworkGraph = function(args) {
         this.isDrawNeighbours = args.isDrawNeighbours; 
     }
     
+    var _callbackAfterPointAdded = args.callbackAfterPointAdded;
+    
 
     //internal variables -----
+    var _center = this.center;
+    var _gridWidth = this.gridWidth;
+    var _gridRadianMax = this.gridRadianMax;
+    var _lineColor = this.lineColor;
+    var _pointColor = this.pointColor;
+    var _pointRadius = this.pointRadius;
+    var _pointRadiusMax = this.pointRadiusMax;
+    var _isDrawLines = this.isDrawLines;
+    var _isDrawNeighbours = this.isDrawNeighbours;
+    
+    
     //var _sphereDistFov = 90;
     //var _rootNodeDist;
     
@@ -566,6 +583,7 @@ EG3.NetworkGraph = function(args) {
     var _matLine;
     var _o3dContainer;
     var _o3dPoints;
+    var _o3dLines;
     var _geomLines;
     
     //var _rootGridSphereCenter;
@@ -602,10 +620,12 @@ EG3.NetworkGraph = function(args) {
         _matLine = new THREE.LineBasicMaterial({color: this.lineColor});
         
         _o3dPoints = new THREE.Object3D()
+        _o3dLines = new THREE.Object3D();
         _geomLines = new THREE.Geometry();
 
         _o3dContainer = new THREE.Object3D();
         _o3dContainer.add(_o3dPoints);
+        _o3dContainer.add(_o3dLines);
         this.scene.add(_o3dContainer);
         
         //sort by edge count
@@ -637,17 +657,16 @@ EG3.NetworkGraph = function(args) {
         */
        
        //var gridSphereRadius = Math.max(makeGridSphereRadius(graphNodes.length), 1000);
-       var gridSphereRadius = 1000;
-       var gridSphereCenter = new THREE.Vector3(this.center.x, this.center.y, this.center.z - gridSphereRadius); 
+       var gridSphereCenter = new THREE.Vector3(this.center.x, this.center.y, this.center.z - 800); 
        // _rootNodeDist = new EG3.GridSpherePositionDistribution(this.gridWidth, gridSphereCenter, this.center);
        //_rootGridSphereCenter = gridSphereCenter;
-       _childrenFocusPosition = new THREE.Vector3(gridSphereCenter.x, gridSphereCenter.y, gridSphereCenter.z + gridSphereRadius / 2);
+       _childrenFocusPosition = new THREE.Vector3(gridSphereCenter.x, gridSphereCenter.y, gridSphereCenter.z - 500);
        makeGraphNodesNoRecursion(graphNodes, gridSphereCenter);
     };
     
     //internal functions ----------------------------
-    function makeGridSphereRadius(maxCount, gridWith, gridRadianMax) {
-        return gridWith * Math.pow(maxCount, 0.5) / gridRadianMax;
+    function makeGridSphereRadius(maxCount, gridWidth, gridRadianMax) {
+        return gridWidth * Math.pow(maxCount, 0.5) / gridRadianMax;
     }
     function getBallRadiusOfGraph(childrenCount, pointRadius) {
         if(childrenCount == 0) {
@@ -655,6 +674,21 @@ EG3.NetworkGraph = function(args) {
         } else {
             return pointRadius * Math.log(childrenCount) * 2;
         }
+    }
+    
+    function addLine(startPoint, endPoint) {
+        if(!_isDrawLines) {
+            return;
+        }
+        
+        var p2 = endPoint.clone();
+        var lineVec = p2.sub(startPoint);
+        var lineLen = lineVec.length();
+        var headLength = 20;
+        var headWidth = 15;
+        var obj3Line = new THREE.ArrowHelper(lineVec.normalize(), startPoint, lineLen, _lineColor, headLength, headWidth);
+        
+        _o3dLines.add(obj3Line);
     }
     
     /* old solution (Grid)
@@ -703,7 +737,7 @@ EG3.NetworkGraph = function(args) {
                 }
             }
         });
-        if(nodesPackage.length == 0) {
+        if(nodesPackage.children.length == 0) {
             graphNodes.sort(function(v1, v2){
                 return v2.destIdList.length - v1.destIdList.length;
             });
@@ -722,14 +756,12 @@ EG3.NetworkGraph = function(args) {
                 var posDist;
                 {
                     newGridSphereCenter = nodesPackage.parentPos;  
-                    var newGridSphereRadius = Math.min(
-                        makeGridSphereRadius(nodesPackage.children.length, this.gridWith, this.gridRadianMax), 
-                        this.gridWidth * 2);
-                    var newGridSphereSurfaceCenter = newGridSphereCenter.clone().sub(_childrenFocusPosition);
-                    var length = newGridSphereSurfaceCenter.length();
-                    var scalar = (length + newGridSphereRadius) / length;
-                    newGridSphereSurfaceCenter.multiplyScalar(scalar);
-                    posDist = new EG3.GridSpherePositionDistribution(this.gridWidth, newGridSphereCenter, newGridSphereSurfaceCenter);
+                    var newGridSphereRadius = Math.max(
+                        makeGridSphereRadius(nodesPackage.children.length, _gridWidth, _gridRadianMax), 
+                        _gridWidth * 2);
+                    var newGridSphereSurfaceCenterDir = newGridSphereCenter.clone().sub(_childrenFocusPosition).normalize();
+                    var newGridSphereSurfaceCenter = newGridSphereSurfaceCenterDir.multiplyScalar(newGridSphereRadius).add(newGridSphereCenter);
+                    posDist = new EG3.GridSpherePositionDistribution(_gridWidth, newGridSphereCenter, newGridSphereSurfaceCenter);
                 }
     
                 var graph;
@@ -741,13 +773,22 @@ EG3.NetworkGraph = function(args) {
                     
                     var thisPos = posDist.nextPosition();   
                 
-                    var ballR = getBallRadiusOfGraph(graph.children.length, this.pointRadius);
+                    var ballR = getBallRadiusOfGraph(graph.children.length, _pointRadius);
                     var geom = new THREE.SphereGeometry(ballR);
                     var ball = new THREE.Mesh(geom, _matPoint);
                     ball.position.set(thisPos.x, thisPos.y, thisPos.z);
             
                     //ball.userData = graph;
                     _o3dPoints.add(ball);
+                    if(_o3dPoints.children.length != 1) {
+                        addLine(newGridSphereCenter, thisPos);    
+                    }
+    
+                    //callback                    
+                    if(_callbackAfterPointAdded) {
+                        _callbackAfterPointAdded(ball, graph);
+                    }
+                    
                     
                     //children
                     if(graph.children.length > 0) {

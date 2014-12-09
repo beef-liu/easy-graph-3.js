@@ -39,12 +39,15 @@
 EG3.Map = function() {
     var _indexMap = {};
     var _entryArray = [];
+    var _size = 0;
     
     this.del = function(key) {
         var index = _indexMap[key];
         if(index != undefined) {
             delete _indexMap[key];
-            delete _entryArray.splice(index, 1);
+            delete _entryArray[index];
+            
+            _size --;
             
             return true;
         } else {
@@ -56,11 +59,14 @@ EG3.Map = function() {
         delete _indexMap;
         _indexMap = {};
         
-        delete _entryArray.splice(0, _entryArray.length);
+        delete _entryArray;
+        _entryArray = [];
+        
+        _size = 0;
     };
     
     this.size = function() {
-        return _entryArray.length;  
+        return _size;  
     };
     
     this.set = function(key, value) {
@@ -73,6 +79,7 @@ EG3.Map = function() {
             _indexMap[key] = _entryArray.length;
             _entryArray.push({key: key, value: value});
 
+            _size ++;
             
             return true;
         } else {
@@ -177,7 +184,9 @@ EG3.Map = function() {
         }
         
         for(var i = 0; i < _entryArray.length; i++) {
-            callBack.call(T, _entryArray[i], i, this);
+            if(_entryArray[i] != undefined) {
+                callBack.call(T, _entryArray[i], i, this);    
+            }
         }
     };
     
