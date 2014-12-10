@@ -717,7 +717,9 @@ EG3.GridSpherePositionDistribution = function(gridWidth, center, surfaceCenter) 
  *      center: THREE.Vector3,                                          //optional. (default: (0, 0, 0))
  *      gridWidth: float,                                               //optional. (default: 200)
  *      gridRadianMax: float                                            //optional. (default: Math.PI / 2)
- *      lineColor: int,                                                 //optional. (default: 0x0) 
+ *      lineColor: int,                                                 //optional. (default: 0x0)
+ *      lineArrowLength: float                                          //optional. (default: 100)
+ *      lineArrowWidth: float                                           //optional. (default: 15) 
  *      pointColor: int,                                                //optional. (default: 0xff0000)
  *      pointRadius: float,                                             //optional. (default: 50) It is just a minimal for these graph whose count of edges is 0 or 1. 
  *      isDrawLines: boolean,                                           //optional. (default: true)
@@ -736,6 +738,8 @@ EG3.NetworkGraph = function(args) {
     this.gridRadianMax = Math.PI / 2;
 
     this.lineColor = 0x1010ff;
+    this.lineArrowLength = 100;
+    this.lineArrowWidth = 15;
     
     this.pointColor = 0xfd5a5a;
     this.pointRadius = 8;
@@ -757,6 +761,12 @@ EG3.NetworkGraph = function(args) {
 
     if(args.lineColor != undefined) {
         this.lineColor = args.lineColor;
+    }
+    if(args.lineArrowLength != undefined) {
+        this.lineArrowLength = args.lineArrowLength;
+    }
+    if(args.lineArrowWidth != undefined) {
+        this.lineArrowWidth = args.lineArrowWidth;
     }
     if(args.pointColor != undefined) {
         this.pointColor = args.pointColor;
@@ -783,6 +793,8 @@ EG3.NetworkGraph = function(args) {
     var _gridWidth = this.gridWidth;
     var _gridRadianMax = this.gridRadianMax;
     var _lineColor = this.lineColor;
+    var _lineArrowLength = this.lineArrowLength;
+    var _lineArrowWidth = this.lineArrowWidth;
     var _pointColor = this.pointColor;
     var _pointRadius = this.pointRadius;
     var _pointRadiusMax = this.pointRadiusMax;
@@ -796,8 +808,8 @@ EG3.NetworkGraph = function(args) {
     //key: srcId    value: Object3D(.userData is Grpah type)
     var _ballMap = new EG3.Map();
     
-    var _matPoint;
-    var _matLine;
+    //var _matPoint;
+    //var _matLine;
     var _o3dContainer;
     var _o3dPoints;
     var _o3dLines;
@@ -831,10 +843,8 @@ EG3.NetworkGraph = function(args) {
         this.clear();
 
         //init vars
-        _matPoint = new THREE.MeshBasicMaterial({color: this.pointColor});
-        //_rootNodeDist.ballMat = _matPoint;
-        
-        _matLine = new THREE.LineBasicMaterial({color: this.lineColor});
+        //_matPoint = new THREE.MeshBasicMaterial({color: this.pointColor});
+        //_matLine = new THREE.LineBasicMaterial({color: this.lineColor});
         
         _o3dPoints = new THREE.Object3D()
         _o3dLines = new THREE.Object3D();
@@ -904,8 +914,10 @@ EG3.NetworkGraph = function(args) {
         var p2 = endPoint.clone();
         var lineVec = p2.sub(startPoint);
         var lineLen = lineVec.length();
-        var headLength = 20;
-        var headWidth = 15;
+        
+        var headLength = _lineArrowLength;
+        var headWidth = _lineArrowWidth;
+
         var obj3Line = new THREE.ArrowHelper(lineVec.normalize(), startPoint, lineLen, _lineColor, headLength, headWidth);
         
         _o3dLines.add(obj3Line);
@@ -944,9 +956,10 @@ EG3.NetworkGraph = function(args) {
         var graphNodesPackageBuffer2 = [];
         var allGraphNodesMap = new EG3.Map();
         var unrenderedGraphNodesMap = new EG3.Map();
+        var renderedNodePosMap = new EG3.Map();
 
         //save in buffer and filter root nodes
-        var nodesPackage = {parentPos: gridSphereCenter, children:[]};
+        var nodesPackage = {isFakeParent:true, parentPos: gridSphereCenter, children:[]};
         graphNodes.forEach(function(graphNode) {
             if(graphNode.vid != undefined && graphNode.vid.length > 0) {
                 unrenderedGraphNodesMap.set(graphNode.vid, graphNode);
@@ -959,7 +972,7 @@ EG3.NetworkGraph = function(args) {
         });
         if(nodesPackage.children.length == 0) {
             graphNodes.sort(function(v1, v2){
-                return v2.destIdList.length - v1.destIdList.length;
+                return v2.children.length - v1.children.length;
             });
             
             nodesPackage.children = graphNodes.splice(0, 1000);
@@ -991,22 +1004,29 @@ EG3.NetworkGraph = function(args) {
                     }
                     unrenderedGraphNodesMap.del(graph.vid);
                     
-                    var thisPos = posDist.nextPosition();   
+                    var thisPos = renderedNodePosMap.get(graph.vid); 
+                    if(thisPos == undefined) {
+                        thisPos = posDist.nextPosition();
+                        renderedNodePosMap.set(graph.vid, thisPos);
+                        
+                        //create ball ------------                        
+                        var ballR = getBallRadiusOfGraph(graph.children.length, _pointRadius);
+                        var geom = new THREE.SphereGeometry(ballR);
+                        //var ball = new THREE.Mesh(geom, _matPoint);
+                        var ball = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({color: _pointColor}));
+                        ball.position.set(thisPos.x, thisPos.y, thisPos.z);
                 
-                    var ballR = getBallRadiusOfGraph(graph.children.length, _pointRadius);
-                    var geom = new THREE.SphereGeometry(ballR);
-                    var ball = new THREE.Mesh(geom, _matPoint);
-                    ball.position.set(thisPos.x, thisPos.y, thisPos.z);
-            
-                    //ball.userData = graph;
-                    _o3dPoints.add(ball);
-                    if(_o3dPoints.children.length != 1) {
-                        addLine(newGridSphereCenter, thisPos);    
+                        //ball.userData = graph;
+                        _o3dPoints.add(ball);
+        
+                        //callback                    
+                        if(_callbackAfterPointAdded) {
+                            _callbackAfterPointAdded(ball, graph);
+                        }
                     }
-    
-                    //callback                    
-                    if(_callbackAfterPointAdded) {
-                        _callbackAfterPointAdded(ball, graph);
+                    //add line
+                    if(!nodesPackage.isFakeParent) {
+                        addLine(newGridSphereCenter, thisPos);    
                     }
                     
                     
