@@ -507,9 +507,9 @@ EG3.GridSpherePositionDistribution = function(gridWidth, center, surfaceCenter) 
  *      lineArrowLength: float                                          //optional. (default: 100)
  *      lineArrowWidth: float                                           //optional. (default: 15) 
  *      pointColor: int,                                                //optional. (default: 0xff0000)
- *      pointRadius: float,                                             //optional. (default: 50) It is just a minimal for these graph whose count of edges is 0 or 1. 
- *      isDrawLines: boolean,                                           //optional. (default: true)
- *      isDrawNeighbours: boolean,                                      //optional. (default: true)
+ *      pointRadius: float,                                             //optional. (default: 50) It is just a minimal for these graph whose count of edges is 0 or 1.
+ *      isDrawLeafPoint: boolean,                                       //optional. (default: true) whether draw leaf nodes. 
+ *      isDrawLines: boolean,                                           //optional. (default: true) whether draw edges.
  *      callbackAfterPointAdded: function(THREE.Object3d, GraphNode){}  //optional.
  * }
  * 
@@ -531,9 +531,9 @@ EG3.NetworkGraph = function(args) {
     this.pointRadius = 8;
     this.pointRadiusMax = this.pointRadius * 10;
         
-    
+    this.isDrawLeafPoint = true;
     this.isDrawLines = true;
-    this.isDrawNeighbours = true;
+    //this.isDrawNeighbours = true;
     
     if(args.center != undefined) {
         this.center = args.center;
@@ -564,8 +564,13 @@ EG3.NetworkGraph = function(args) {
     if(args.isDrawLines != undefined) {
         this.isDrawLines = args.isDrawLines; 
     }
+    /*
     if(args.isDrawNeighbours != undefined) {
         this.isDrawNeighbours = args.isDrawNeighbours; 
+    }
+    */
+    if(args.isDrawLeafPoint != undefined) {
+        this.isDrawLeafPoint = args.isDrawLeafPoint; 
     }
     
     var _callbackAfterPointAdded = args.callbackAfterPointAdded;
@@ -585,7 +590,8 @@ EG3.NetworkGraph = function(args) {
     var _pointRadius = this.pointRadius;
     var _pointRadiusMax = this.pointRadiusMax;
     var _isDrawLines = this.isDrawLines;
-    var _isDrawNeighbours = this.isDrawNeighbours;
+    //var _isDrawNeighbours = this.isDrawNeighbours;
+    var _isDrawLeafPoint = this.isDrawLeafPoint;
     
     
     //var _sphereDistFov = 90;
@@ -929,35 +935,41 @@ EG3.NetworkGraph = function(args) {
                 
                 graph.children.forEach(function(childId) {
                     var nodePos = renderedNodePosMap.get(childId);
-                    if(nodePos == undefined) {
-                        nodePos = posDist.nextPosition();
-                        renderedNodePosMap.set(childId, nodePos);
-                        
-                        var node = allGraphNodesMap.get(childId);
-                        
-                        if(node == undefined) {
-                            node = new EG3.GraphNode();
-                            node.vid = childId;
-                        }
-                        
-                        //create ball ------------                        
-                        var ballR = getBallRadiusOfGraph(node.children.length, _pointRadius);
-                        var geom = new THREE.SphereGeometry(ballR);
-                        //var ball = new THREE.Mesh(geom, _matPoint);
-                        var ball = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({color: _pointColor}));
-                        ball.position.set(nodePos.x, nodePos.y, nodePos.z);
-                
-                        //ball.userData = graph;
-                        _o3dPoints.add(ball);
-        
-                        //callback                    
-                        if(_callbackAfterPointAdded) {
-                            _callbackAfterPointAdded(ball, node);
-                        }
-                    }
+                    var node = allGraphNodesMap.get(childId);
+                    var nodeChildrenSize = (node != undefined? node.children.length: 0);
                     
-                    //add line
-                    addLine(posDist.center, nodePos);    
+                    if(nodeChildrenSize == 0 && !_isDrawLeafPoint) {
+                        //do not draw leaf point
+                    } else {
+                        if(nodePos == undefined) {
+                            nodePos = posDist.nextPosition();
+                            renderedNodePosMap.set(childId, nodePos);
+                            
+                            
+                            if(node == undefined) {
+                                node = new EG3.GraphNode();
+                                node.vid = childId;
+                            }
+                            
+                            //create ball ------------                        
+                            var ballR = getBallRadiusOfGraph(node.children.length, _pointRadius);
+                            var geom = new THREE.SphereGeometry(ballR);
+                            //var ball = new THREE.Mesh(geom, _matPoint);
+                            var ball = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({color: _pointColor}));
+                            ball.position.set(nodePos.x, nodePos.y, nodePos.z);
+                    
+                            //ball.userData = graph;
+                            _o3dPoints.add(ball);
+            
+                            //callback                    
+                            if(_callbackAfterPointAdded) {
+                                _callbackAfterPointAdded(ball, node);
+                            }
+                        }
+                        
+                        //add line
+                        addLine(posDist.center, nodePos);    
+                    }
                 });
             }
             
